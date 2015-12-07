@@ -90,9 +90,6 @@ namespace ConsoleApplication4
       var densities = GetGaussianDensities( atoms, 0.93 * 0.93 );
       var dielectrics = SmoothWithDielectrics( densities, 4, 80.4 );
 
-      Console.WriteLine( "My formula" );
-      Console.WriteLine( "Your formula" );
-
       Console.ReadLine();
       // 4 reference dialectric
     }
