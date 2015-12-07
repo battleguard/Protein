@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BitmapCreator\Bitmap.cs" />
     <Compile Include="BoundingBox.cs" />
     <Compile Include="Models\Atom.cs" />
     <Compile Include="Models\Cryst.cs" />

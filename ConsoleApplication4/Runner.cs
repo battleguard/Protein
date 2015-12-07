@@ -3,18 +3,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using Alea.CUDA;
 using ConsoleApplication4.Models;
 
 namespace ConsoleApplication4
 {
-  class Runner
+  internal class Runner
   {
-    public static IEnumerable<BoundingBox> CreateSlices(BoundingBox box, int count)
+    public static IEnumerable<BoundingBox> CreateSlices( BoundingBox box, int count )
     {
-      double sliceHeight = box.Depth / count;
-      for ( int i  = 1; i <= count; i++ )
+      var sliceHeight = box.Depth / count;
+      for ( var i = 1; i <= count; i++ )
       {
         var slice = box.Copy();
         if ( i == 1 )
@@ -35,11 +33,11 @@ namespace ConsoleApplication4
         slice.Depth = slice.MaxZ - slice.MinZ;
         yield return slice;
       }
-    } 
+    }
 
-    public static BoundingBox CreateBoundingBox( IEnumerable<Atom> atoms)
+    public static BoundingBox CreateBoundingBox( IEnumerable<Atom> atoms )
     {
-      BoundingBox box = new BoundingBox();
+      var box = new BoundingBox();
       box.MinX = box.MinY = box.MinZ = double.MaxValue;
       box.MaxX = box.MaxY = box.MaxZ = double.MinValue;
       foreach ( var atom in atoms )
@@ -75,44 +73,65 @@ namespace ConsoleApplication4
       var lines = File.ReadAllLines( @"C:\workspaces\protein\pdb1smd.ent" );
       var sw = Stopwatch.StartNew();
       var atoms = PdbParser.GetAtomsFromPdb( lines ).ToArray();
+      atoms = atoms.Where( atom => atom.Vdw != -1.0 ).ToArray();
 
       var box = CreateBoundingBox( atoms );
-
+      // y z plane
+//
       const int numOfSlices = 1000;
-      BoundingBox[] slices = CreateSlices( box, numOfSlices ).ToArray();
+//      BoundingBox[] slices = CreateSlices( box, numOfSlices ).ToArray();
+//
+//      foreach ( var atom in atoms )
+//      {
+//        var slice = slices.First( s => s.Contains( atom ) );
+//        slice.Atoms.Add( atom );
+//      }
 
-      foreach ( var atom in atoms )
-      {
-        var slice = slices.First( s => s.Contains( atom ) );
-        slice.Atoms.Add( atom );
-      }
+      var densities = GetGaussianDensities( atoms, 0.93 * 0.93 );
+      var dielectrics = SmoothWithDielectrics( densities, 4, 80.4 );
 
-      double[] densities = new double[atoms.Length];
-      AtomDensityKernelIr( atoms, 0.93, densities );
+      Console.WriteLine( "My formula" );
+      Console.WriteLine( "Your formula" );
 
-      Console.WriteLine( sw.ElapsedMilliseconds );
       Console.ReadLine();
       // 4 reference dialectric
     }
 
-        private static void AtomDensityKernelIr( Atom[] atoms, double variance, double[] output )
-        {
+    private static double[] SmoothWithDielectrics( double[] densities, double referenceDielectricValue, double waterDielectricValue )
+    {
+      return densities.Select( d => SmoothDielectric( d, referenceDielectricValue, waterDielectricValue ) ).ToArray();
+    }
 
-          Parallel.For( 0, atoms.Length, i =>
-          {
-            var curAtom = atoms[i];
-            for ( int j = 0; j < atoms.Length && i != j; j++ )
-            {
-              var otherAtom = atoms[j];
-              var diffx = curAtom.X - otherAtom.X;
-              var diffy = curAtom.Y - otherAtom.Y;
-              var diffz = curAtom.Z - otherAtom.Z;
-              var distance = ( diffx * diffx ) + ( diffy * diffy ) + ( diffz * diffz );
-              output[i] = 1.0 - Math.Exp( ( -1.0 * distance ) / ( ( variance * variance ) * ( otherAtom.Vdw * otherAtom.Vdw ) ) );
-            }
-          } );
+    private static double SmoothDielectric( double density, double referenceDielectricValue, double waterDielectricValue )
+    {
+      return density * referenceDielectricValue + ( 1 - density ) * waterDielectricValue;
+    }
+
+    private static double[] GetGaussianDensities( Atom[] atoms, double varianceSquared )
+    {
+      var densities = new double[atoms.Length];
+
+      for ( var i = 0; i < atoms.Length; i++ )
+      {
+        densities[i] = 1.0;
+        for ( var j = 0; j < atoms.Length; j++ )
+        {
+          if ( i == j )
+            continue;
+          densities[i] *= GetGaussianDensity( atoms[i], atoms[j], varianceSquared );
         }
+      }
+      return densities;
+    }
+
+    private static double GetGaussianDensity( Atom atom1, Atom atom2, double varianceSquared )
+    {
+      var diffx = atom1.X - atom2.X;
+      var diffy = atom1.Y - atom2.Y;
+      var diffz = atom1.Z - atom2.Z;
+
+      var distance = ( diffx * diffx ) + ( diffy * diffy ) + ( diffz * diffz );
+      return 1.0 - Math.Exp( ( -1.0 * distance ) / ( ( varianceSquared ) * ( atom2.VdwSquared ) ) );
+    }
   }
 }
-
-

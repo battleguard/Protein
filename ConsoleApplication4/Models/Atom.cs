@@ -40,6 +40,7 @@ namespace ConsoleApplication4.Models
     public int SerialNumber;
     public double TempFactor;
     public double Vdw;
+    public double VdwSquared;
     public double X;
     public double Y;
     public double Z;
@@ -80,12 +81,13 @@ namespace ConsoleApplication4.Models
       //79 - 80        LString(2)    charge Charge  on the atom.
       atom.Charge = data.Substring( 78, 2 );
       atom.Vdw = GetVdwr( atom.Element );
+      atom.VdwSquared = atom.Vdw * atom.Vdw;
       return atom;
     }
 
     private static double GetVdwr( string element )
     {
-      switch ( element )
+      switch ( element.Trim() )
       {
         case "H":
           return 1.2;

@@ -522,6 +522,9 @@
 //        if ( dinputs[i].resid != dinputs[j].resid )
 //          moldensity *= dinputmatrix[( j * n ) + i];
 //      }
+//      // ref dialectric = 4
+        // outdielectric = 80.4
+        // output = (1.0 - density) * 4 + (density * 80.4)
 //      doutputs[i] = ( ( 1.0 - moldensity ) * refdielectric ) + ( moldensity * outdielectric );
 //    }
 //
